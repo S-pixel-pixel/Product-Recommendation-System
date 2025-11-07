@@ -6,7 +6,7 @@ import pickle
 st.title("Product Recommendation - Rating Prediction App")
 
 # Load best model and label encoders
-with open("best_recommendation_model.pkl", "rb") as f:
+with open("best_recommendation_model (1).pkl", "rb") as f:
     model = pickle.load(f)
 
 with open("label_encoders.pkl", "rb") as f:
@@ -39,4 +39,5 @@ if uploaded_file is not None:
             st.error(f"Error during prediction: {e}")
     else:
         st.error("The uploaded file must contain 'userId' and 'productId' columns.")
+
 
