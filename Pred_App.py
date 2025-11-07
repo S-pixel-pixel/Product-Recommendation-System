@@ -15,7 +15,7 @@ with open("label_encoders.pkl", "rb") as f:
 
 st.success("Model and encoders loaded successfully!")
 
-uploaded_file = st.file_uploader("Upload a CSV file (must contain userId and productId columns)", type=["csv"])
+uploaded_file = st.file_uploader("Upload a CSV file (must contain userid and productid columns)", type=["csv"])
 
 if uploaded_file is not None:
     try:
@@ -23,28 +23,43 @@ if uploaded_file is not None:
         st.write("Uploaded Data Preview:")
         st.dataframe(input_data.head())
 
-        # Keep only necessary columns
-        if not all(col in input_data.columns for col in ['userId', 'productId']):
+        # 🔧 Normalize column names
+        input_data.columns = input_data.columns.str.lower()
+
+        # Match encoders case-insensitively
+        normalized_encoders = {k.lower(): v for k, v in encoders.items()}
+
+        # Ensure required columns
+        if not all(col in input_data.columns for col in ['userid', 'productid']):
             st.error("The uploaded file must contain 'userId' and 'productId' columns.")
         else:
-            # Select only required columns
-            input_data = input_data[['userId', 'productId']].copy()
+                           
+                display_data = input_data[['userid', 'productid']].head(20).copy()
+                
+                # Create encoded copy for prediction
+                encoded_data = display_data.copy()
+                
+                # Apply encoders safely (Option A: Replace unseen IDs randomly)
+                for col in ['userid', 'productid']:
+                    if col in normalized_encoders:
+                        le = normalized_encoders[col]
+                        encoded_data[col] = encoded_data[col].map(
+                            lambda x: le.transform([x])[0]
+                            if x in le.classes_
+                            else np.random.randint(0, len(le.classes_))
+                        )
+                
+                # Ensure numeric
+                encoded_data = encoded_data.fillna(0).astype(float)
+                
+                # Predict ratings
+                preds = model.predict(encoded_data[['userid', 'productid']])
+                
+                # Add predictions to original display data
+                display_data['Predicted_Rating'] = preds
+                
+                st.success("🎯 Predictions Generated Successfully!")
+                st.dataframe(display_data.head(20))
 
-            # Apply label encoders safely
-            for col in ['userId', 'productId']:
-                if col in encoders:
-                    input_data[col] = input_data[col].map(
-                        lambda x: encoders[col].transform([x])[0]
-                        if x in encoders[col].classes_
-                        else np.random.randint(0, len(encoders[col].classes_))
-                    )
-
-            # Predict ratings
-            preds = model.predict(input_data[['userId', 'productId']])
-            input_data['Predicted_Rating'] = preds
-
-            st.success("Predictions Generated Successfully!")
-            st.dataframe(input_data.head(20))
     except Exception as e:
         st.error(f"Error: {e}")
-
